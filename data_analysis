@@ -1,0 +1,133 @@
+## 1. ВЫБОР И ПОДГОТОВКА ДАННЫХ ДЛЯ КЛАСТЕРИЗАЦИИ K-MEANS
+
+#импортируем библиотеку для работы с файлами MS Excel
+install.packages("readxl")
+library("readxl")
+
+###УСТАНОВИТЬ ПУТЬ (SET DIRECTORY) К ПАПКЕ, В КОТОРОЙ
+### ХРАНИТЬСЯ ФАЙЛ ЭКСЕЛЬ "HFA_471_EN.xlsx"###
+
+# Импортируем данные, содержащие информацию о количесве больниц по странам
+# с 1980 по 2015 гг. в датафрейм "Init_data":
+
+Init_data <- as.data.frame(read_xlsx("HFA_471_EN.xlsx", sheet = "Data (table)"))
+
+# Стандартизируем переменную VALUE:
+Init_data$VALUE <- scale(Init_data$VALUE)
+Init_data$YEAR <- scale(Init_data$YEAR)
+
+# В файле Init_data слишком объемный массив данных. Урежем до 50 строк:
+Slice_data <- as.data.frame(Init_data[1:50,])
+
+###Разделяем данные на 2 кластера с помощью иерархической кластеризации:
+install.packages("ggplot2")
+library(ggplot2)
+install.packages("ggrepel")
+library(ggrepel) # для симпатичной подписи точек на графике
+
+# Создаем датафрейм:
+Slice_data$labels <- 1:nrow(Slice_data)
+
+# Строим scatterplot:
+
+ggplot(Slice_data, aes(YEAR, VALUE, label = labels))+
+  geom_point()+
+  geom_text_repel()
+
+# Считаем евклидово расстояние между точками:
+d = dist(Slice_data)
+
+# Используем метод "ближайшего соседа":
+fit1 <- hclust(d, method = "single")
+plot(fit1, labels = Slice_data$labels, xlab = ".", ylab = "Высота")
+rect.hclust(fit1, 3) # укажите желаемое число кластеров, сейчас стоит 3
+
+#Добавляем истинный вектор значений кластеров:
+CL <- c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3) 
+
+# Исследование влияния параметров иерархического метода на качество решения:
+#Метод ward.D
+fit3 <- hclust(d, method = "ward.D")
+plot(fit3, labels = Slice_data$labels, xlab = ".", ylab = "Высота")
+rect.hclust(fit3, 3) # укажите желаемое число кластеров, сейчас стоит 3
+
+#Метод centroid
+fit3 <- hclust(d, method = "centroid")
+plot(fit3, labels = Slice_data$labels, xlab = ".", ylab = "Высота")
+rect.hclust(fit3, 3) # укажите желаемое число кластеров, сейчас стоит 3
+
+## 1. ВЫБОР И ПОДГОТОВКА ДАННЫХ ДЛЯ КЛАСТЕРИЗАЦИИ HIERARCHICAL
+
+#импортируем библиотеку для работы с файлами MS Excel
+install.packages("readxl")
+install.packages('DPBBM')
+
+library("readxl")
+library(ggplot2)
+library(DPBBM)
+
+#УСТАНОВИТЬ ПУТЬ (SET DIRECTORY) К ПАПКЕ, В КОТОРОЙ
+#ХРАНИТЬСЯ ФАЙЛ ЭКСЕЛЬ "HFA_471_EN.xlsx"#
+# Импортируем данные, содержащие информацию о количесве больниц по странам
+# с 1980 по 2015 гг. в датафрейм "Init_data":
+Init_data <- as.data.frame(read_xlsx("HFA_471_EN.xlsx", sheet = "Data (table)"))
+
+# В файле Init_data слишком объемный массив данных. Урежем до 50 строк:
+Slice_data <- as.data.frame(Init_data[1:50,])
+
+# Построение гистограмм распределения
+ggplot(Slice_data, aes(x = VALUE)+
+  geom_density(fill = "blue", alpha = 0.5)
+ggplot(Slice_data, aes(x = YEAR))+
+  geom_density(fill = "red", alpha = 0.5)
+
+# Описательные статистики:
+sum1 <- summary(Init_data$YEAR)
+sum2 <- summary(Init_data$VALUE)
+
+# Стандартизируем переменную VALUE:
+Slice_data$VALUE.Scaled <- scale(Slice_data$VALUE)
+Slice_data$YEAR.Scaled <- scale(Slice_data$YEAR)
+
+#Добавляем истинный вектор значений кластеров:
+
+CL <- c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3) 
+# Диаграмма рассеивания:
+ggplot(data = Slice_data, aes(YEAR.Scaled, VALUE.Scaled)) +
+  geom_point(size = 2)
+
+#Строим категоризованную диаграмму рассеивания:
+ggplot(data = Slice_data, aes(YEAR.Scaled, VALUE.Scaled, col = COUNTRY_REGION)) +
+  geom_point(size = 2)
+
+# Извлекаем нужные переменные из фреймворка: 
+d2 <- Slice_data[, c("YEAR.Scaled", "VALUE.Scaled")]
+
+# Выполняем кластеризацию методом K-means (2 кластера):
+fit2 <- kmeans(d2, 3, algorithm = "Hartigan-Wong")
+d2$clusters <- factor(fit2$cluster)
+
+# Строим график: 
+ggplot(d2, aes(YEAR.Scaled, VALUE.Scaled, col = clusters))+
+  geom_point(size = 2)+ theme_bw()
+
+
+#ПРоверяем кластер метрикой F-мера Bcubed:
+alpha <- 0.5
+Bcubed_score <- BCubed_metric(CL, fit2$cluster, alpha)
+Bcubed_score
+
+# Находим центры кластеров:
+center1 <- fit2$centers
+
+# Находим межгрупповую и внутригрупповую изменчивость:
+withinSS <- fit2$withinss
+betweenSS <- fit2$betweenss
+
+
